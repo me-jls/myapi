@@ -30,7 +30,7 @@ import (
 
 	// "github.com/go-ldap/ldap/v3"
 	// _ "github.com/go-sql-driver/mysql"
-	// ginprometheus "github.com/zsais/go-gin-prometheus"
+	ginprometheus "github.com/zsais/go-gin-prometheus"
 	getenvs "gitlab.com/avarf/getenvs"
 )
 
@@ -79,10 +79,11 @@ func main() {
 	router := gin.Default()
 
 	router.GET("/", whoamiHandler)
-	// router.GET("/data", dataHandler)
 	router.GET("/ping", pingHandler)
 	router.GET("/echo", echoHandler)
 	router.POST("/echo", echoHandler)
+	router.GET("/healthcheck", healthcheckHandler)
+	//router.GET("/ldap", ldapHandler)
 
 	//var w http.ResponseWriter = c.Writer
 	//var req *http.Request = c.Req
@@ -99,6 +100,9 @@ func main() {
 
 	// By default it serves on :8080 unless a
 	// PORT environment variable was defined.
+
+	p := ginprometheus.NewPrometheus("gin")
+	p.Use(router)
 
 	router.Run(":"+port)
 
@@ -166,12 +170,6 @@ func pingHandler(c *gin.Context) {
 }
 
 
-// func benchHandler(w http.ResponseWriter, _ *http.Request) {
-// 	w.Header().Set("Connection", "keep-alive")
-// 	w.Header().Set("Content-Type", "text/plain")
-// 	_, _ = fmt.Fprint(w, "1")
-// }
-
 func echoHandler(c *gin.Context) {
 	params := c.Request.URL.Query()
 	log.Printf("[echo query] %s", params)
@@ -183,72 +181,8 @@ func echoHandler(c *gin.Context) {
 	c.String(http.StatusOK, "OK")
 }
 
-// 	for {
-// 		messageType, p, err := conn.ReadMessage()
-// 		if err != nil {
-// 			return
-// 		}
 
-// 		printBinary(p)
-// 		err = conn.WriteMessage(messageType, p)
-// 		if err != nil {
-// 			return
-// 		}
-// 	}
-// }
-
-// func printBinary(s []byte) {
-// 	fmt.Printf("Received b:")
-// 	for n := 0; n < len(s); n++ {
-// 		fmt.Printf("%d,", s[n])
-// 	}
-// 	fmt.Printf("\n")
-// }
-
-// func dataHandler(w http.ResponseWriter, r *http.Request) {
-// 	u, _ := url.Parse(r.URL.String())
-// 	queryParams := u.Query()
-
-// 	size, err := strconv.ParseInt(queryParams.Get("size"), 10, 64)
-// 	if err != nil {
-// 		size = 1
-// 	}
-// 	if size < 0 {
-// 		size = 0
-// 	}
-
-// 	unit := queryParams.Get("unit")
-// 	switch strings.ToLower(unit) {
-// 	case "kb":
-// 		size *= KB
-// 	case "mb":
-// 		size *= MB
-// 	case "gb":
-// 		size *= GB
-// 	case "tb":
-// 		size *= TB
-// 	}
-
-// 	attachment, err := strconv.ParseBool(queryParams.Get("attachment"))
-// 	if err != nil {
-// 		attachment = false
-// 	}
-
-// 	content := fillContent(size)
-
-// 	if attachment {
-// 		w.Header().Set("Content-Disposition", "Attachment")
-// 		http.ServeContent(w, r, "data.txt", time.Now(), content)
-// 		return
-// 	}
-
-// 	if _, err := io.Copy(w, content); err != nil {
-// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-// 		return
-// 	}
-// }
-
-func whoamiHandler (c *gin.Context) {
+func whoamiHandler(c *gin.Context) {
 	var w http.ResponseWriter = c.Writer
 	var req *http.Request = c.Request
 	wait := c.Query("wait")
@@ -285,7 +219,7 @@ func whoamiHandler (c *gin.Context) {
 	_, _ = fmt.Fprintln(w, "RemoteAddr:", req.RemoteAddr)
 	if err := req.Write(w); err != nil {
 		//http.Error(w, err.Error(), http.StatusInternalServerError)
-		c.String(http.StatusInsufficientStorage, "Errors")
+		c.String(http.StatusInternalServerError, "Errors")
 		log.Printf(err.Error())
 		return
 	}
@@ -338,35 +272,27 @@ func whoamiHandler (c *gin.Context) {
 // 	}
 // }
 
-// type healthState struct {
-// 	StatusCode int
-// }
 
-// var (
-// 	currentHealthState = healthState{http.StatusOK}
-// 	mutexHealthState   = &sync.RWMutex{}
-// )
+func healthcheckHandler(c *gin.Context) {
+	var statusCodeStr string
+	if (len(c.Query("code")) > 0 && c.Query("code") != "200"){
+		statusCodeStr = c.Query("code")
+	} else {
+		statusCodeStr = "200"
+	}
+	statusCodeInt, err := strconv.Atoi(statusCodeStr)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Errors")
+		log.Printf(err.Error())
+		return
+	}
+	if statusCodeInt > 200 {
+		log.Printf("Update health check status code [%d]\n", statusCodeInt)
+	}
+	c.String(statusCodeInt,"Healthcheck return code: "+statusCodeStr)
+}
 
-// func healthHandler(w http.ResponseWriter, req *http.Request) {
-// 	if req.Method == http.MethodPost {
-// 		var statusCode int
 
-// 		if err := json.NewDecoder(req.Body).Decode(&statusCode); err != nil {
-// 			http.Error(w, err.Error(), http.StatusBadRequest)
-// 			return
-// 		}
-
-// 		fmt.Printf("Update health check status code [%d]\n", statusCode)
-
-// 		mutexHealthState.Lock()
-// 		defer mutexHealthState.Unlock()
-// 		currentHealthState.StatusCode = statusCode
-// 	} else {
-// 		mutexHealthState.RLock()
-// 		defer mutexHealthState.RUnlock()
-// 		w.WriteHeader(currentHealthState.StatusCode)
-// 	}
-// }
 
 // func fillContent(length int64) io.ReadSeeker {
 // 	charset := "-ABCDEFGHIJKLMNOPQRSTUVWXYZ"

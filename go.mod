@@ -1,4 +1,4 @@
-module github.com/traefik/whoami
+module github.com/me-jls/myapi
 
 go 1.13
 
