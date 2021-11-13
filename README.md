@@ -1,7 +1,4 @@
-# whoami
-
-[![Docker Pulls](https://img.shields.io/docker/pulls/traefik/whoami.svg)](https://hub.docker.com/r/traefik/whoami/)
-[![Build Status](https://github.com/traefik/whoami/workflows/Main/badge.svg?branch=master)](https://github.com/traefik/whoami/actions)
+# myapi
 
 Tiny Go webserver that prints os information and HTTP request to output
 
