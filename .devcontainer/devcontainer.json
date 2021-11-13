@@ -1,0 +1,21 @@
+{
+    //"name": "my GO project",
+    "dockerFile": "Dockerfile",
+    "appPort": 8000,
+    "extensions": [
+        "golang.go"
+    ],
+    "settings": {
+        "go.useLanguageServer": true
+    },
+    "postCreateCommand": "sudo go mod download",
+    "runArgs": [
+        "--name","golangEnvironment",
+        "-u","vscode",
+        "--cap-add=SYS_PTRACE",
+        "--security-opt",
+        "seccomp=unconfined",
+        // map SSH keys for Git
+        "-v", "${env:HOME}/.ssh:/home/vscode/.ssh:ro"
+    ]
+}
